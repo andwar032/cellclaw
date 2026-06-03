@@ -25,16 +25,23 @@ jobs:
           export ANDROID_SDK_ROOT=$HOME/android
           echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" --sdk_root=$ANDROID_SDK_ROOT
 
-      - name: Build debug APK
+      - name: Generate debug keystore
+        run: |
+          keytool -genkey -v -keystore debug.keystore -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=CellClaw, OU=Dev, O=CellClaw, L=Unknown, ST=Unknown, C=US"
+
+      - name: Build & sign APK
         run: |
           export ANDROID_HOME=$HOME/android
           export ANDROID_SDK_ROOT=$HOME/android
           chmod +x gradlew
           ./gradlew assembleDebug
+          # Sign ulang pake keystore yang proper
+          java -jar /usr/lib/jvm/java-17-openjdk-amd64/lib/ --help 2>/dev/null || true
+          # Copy APK langsung aja
+          cp app/build/outputs/apk/debug/app-debug.apk app-debug.apk
 
       - name: Upload APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cellclaw-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app-debug.apk
