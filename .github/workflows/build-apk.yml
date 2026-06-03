@@ -1,26 +1,39 @@
 ﻿name: Build APK
 
-on:
-  push:
-    branches: [ master ]
-  workflow_dispatch:
+on: [workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: android:latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Accept licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Install Android SDK
+        run: |
+          apt-get update -qq && apt-get install -y -qq wget unzip
+          mkdir -p $HOME/android/cmdline-tools
+          cd $HOME/android
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d cmdline-tools/
+          mv cmdline-tools/cmdline-tools cmdline-tools/latest 2>/dev/null || true
+          export ANDROID_SDK_ROOT=$HOME/android
+          echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" --sdk_root=$ANDROID_SDK_ROOT
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: |
+          export ANDROID_HOME=$HOME/android
+          export ANDROID_SDK_ROOT=$HOME/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cellclaw-apk
